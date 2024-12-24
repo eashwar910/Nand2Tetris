@@ -1,7 +1,0 @@
-CHIP Tessa {
-    IN a, b, c, d;
-    OUT out;
-
-    PARTS:
-    And(a=a, b=b, out=out);
-}
