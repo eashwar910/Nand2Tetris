@@ -1,0 +1,46 @@
+CHIP CPU {
+    IN inM[16], instruction[16], reset;
+    OUT outM[16], writeM, addressM[15], pc[15];
+
+    PARTS:
+        
+        // A instruction and C instruction
+        Not(in=instruction[15], out=A);
+        Not(in=A, out=C);
+
+        // A-instruction or ALU output loaded to A-register
+        Mux16(a=instruction, b=ALUout, sel=C, out=Ain);
+        Or(a=A, b=instruction[5], out=loadA);
+        ARegister(in=Ain, load=loadA, out=Aout, out[0..14]=addressM);
+
+        // M Register: choose RAM input or ARegister output
+        And(a=instruction[12], b=C, out=AorM);
+        Mux16(a=Aout, b=inM, sel=AorM, out=AMout);
+
+        // load D register if C intruction and destination is Data Register
+        And(a=C, b=instruction[4], out=loadD);
+        DRegister(in=ALUout, load=loadD, out=Dout);
+
+        // ALU
+        ALU(x=Dout, y=AMout, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUout, out=outM, zr=zr, ng=ng);
+
+        // ALU result written to memory if C-instruction sets WriteM bit
+        And(a=C, b=instruction[3], out=writeM);
+
+        // jump if output load is zero or less than zero
+        And(a=zr, b=instruction[1], out=jeq);
+        And(a=ng, b=instruction[2], out=jlt);
+        Or(a=jeq, b=jlt, out=jle);
+    
+        // jump if output load is positive
+        Not(in=zr, out=notZR);
+        Not(in=ng, out=notNG);
+        And(a=notZR, b=notNG, out=pos);
+        And(a=pos, b=instruction[0], out=jgt);
+        Or(a=jle, b=jgt, out=jump);
+
+        // load the pc with address when jump is called or increated the pc
+        And(a=C, b=jump, out=load);
+        PC(in=Aout, load=load, inc=true, reset=reset, out[0..14]=pc);
+
+}

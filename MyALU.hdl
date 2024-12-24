@@ -1,0 +1,77 @@
+CHIP MyALU {
+    IN  
+        x[16], y[16],  // 16-bit inputs        
+        C0, C1, C2, C3, C4; // 5 control bits
+
+    OUT 
+        out[16], // 16-bit output
+        zr, // Flag is set if output is 0 (out=0000 0000 0000 0000), or is 0 otherwise
+        ng; // Flag is set if output is negative (out<0), or is 0 otherwise
+
+    PARTS:
+    
+    // Arithmetical and Logical operations to get the desired outputs
+
+    Inc16(in=false, out=one); // 1 or 0000 0000 0000 0001
+    
+    Not16(in=x, out=notX); //NOT of x
+    Not16(in=y, out=notY); //NOT of y
+    
+    // twos complement
+    Inc16(in=notX, out=negX); // negative x
+    Inc16(in=notY, out=negY); // negative y
+
+    Inc16(in=x, out=xplusone); // x+1
+    Inc16(in=y, out=yplusone); // y+1
+
+    // In this case true is 1111 1111 1111 1111 which can be read as -1
+    Add16(a=x, b=true, out=xminusone); //x-1
+    Add16(a=y, b=true, out=yminusone); //y-1
+    
+    Add16(a=x, b=y, out=xplusy); // x+y
+    Add16(a=x, b=negY, out=xminusy); // x+(-y)=x-y
+    Add16(a=y, b=negX, out=yminusx); // y+(-x)=y-x
+
+
+    And16(a=x, b=y, out=xandy); // x AND y
+    Or16(a=x, b=y, out=xory); // x OR y
+    Xor16(a=x, b=y, out=xeory); // x XOR y
+    Not16(in=xeory, out=xenory); // x XNOR y
+
+    //C0
+    Mux16(a=false, b=one, sel=C0, out=muxab); // 0 or 1
+    Mux16(a=true, b=x, sel=C0, out=muxcd); // -1 or x
+    Mux16(a=y, b=notX, sel=C0, out=muxef); // y or NOT x
+    Mux16(a=notY, b=negX, sel=C0, out=muxgh); // NOT y or -x
+    Mux16(a=negY, b=xplusone, sel=C0, out=muxij); // -y or x+1
+    Mux16(a=yplusone, b=xminusone, sel=C0, out=muxkl); // y+1 or x-1
+    Mux16(a=yminusone, b=xplusy, sel=C0, out=muxmn); // y-1 or x+y
+    Mux16(a=xminusy, b=yminusx, sel=C0, out=muxop); // x-y or y-x
+    Mux16(a=xandy, b=xory, sel=C0, out=muxqr); // x AND y or x OR y
+    Mux16(a=xeory, b=xenory, sel=C0, out=muxst); // x XOR y or x XNOR y
+
+    //C1
+    Mux16(a=muxab, b=muxcd, sel=C1, out=muxabcd);
+    Mux16(a=muxef, b=muxgh, sel=C1, out=muxefgh);
+    Mux16(a=muxij, b=muxkl, sel=C1, out=muxijkl);
+    Mux16(a=muxmn, b=muxop, sel=C1, out=muxmnop);
+    Mux16(a=muxqr, b=muxst, sel=C1, out=muxqrst);
+
+    //C2
+    Mux16(a=muxabcd, b=muxefgh, sel=C2, out=muxabcdefgh);
+    Mux16(a=muxijkl, b=muxmnop, sel=C2, out=muxijklmnop);
+    
+    //C3
+    Mux16(a=muxabcdefgh, b=muxijklmnop, sel=C3, out=muxap);
+    
+    //C4
+    Mux16(a=muxap, b=muxqrst, sel=C4, out=out, out=outZrCheck, out[15]=outNgCheck); // final output
+
+    //Setting or clearing the Zr and Ng flags
+    //zr
+    Or16Way(in=outZrCheck, out=notZr);
+    Not(in=notZr, out=zr);
+    
+    //ng
+    And(a=outNgCheck, b=true, out=ng);
+}
